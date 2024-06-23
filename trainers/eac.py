@@ -7,6 +7,7 @@ from misc.utils import AvgMeter, generate_flip_grid
 from misc.loss import ACLoss
 import torchmetrics
 from tqdm import tqdm
+from misc.metric import ECELoss
 
 def train_epoch(args, epoch, model, train_loader, optimizer, criterion):
     
@@ -19,7 +20,7 @@ def train_epoch(args, epoch, model, train_loader, optimizer, criterion):
     end = time.time()
     model.train()
     
-    for step, (image1, label, idx, image2) in enumerate(train_loader):
+    for step, (image1, label, idx, image2, filename) in enumerate(train_loader):
         
         image1 = image1.to(args.device)
         image2 = image2.to(args.device)
@@ -66,13 +67,15 @@ def test_epoch(args, model, test_loader, criterion):
     
     test_loss_meter = AvgMeter()
     test_acc_meter = AvgMeter()
+    test_ece_meter = AvgMeter()
     meter_dict = dict()
     acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=args.num_classes).to(args.device)
+    ece_metric = ECELoss().to(args.device)
 
     model.eval()
     
     with torch.no_grad():
-        for step, (image1, label, idx, image2) in enumerate(test_loader):
+        for step, (image1, label, idx, image2, filename) in enumerate(test_loader):
         
             image1 = image1.to(args.device)
             image2 = image2.to(args.device)
@@ -89,11 +92,14 @@ def test_epoch(args, model, test_loader, criterion):
             loss = loss1 + 3 * flip_loss_l
             
             acc = acc_metric(output.argmax(dim=-1), label).item()
+            ece = ece_metric(output, label).item()
             
             test_loss_meter.update(loss.item(), image1.size(0))
             test_acc_meter.update(acc, image1.size(0))
+            test_ece_meter.update(ece, image1.size(0))
             
         meter_dict["test_loss"] = test_loss_meter.avg
         meter_dict["test_acc"] = test_acc_meter.avg 
+        meter_dict["test_ece"] = test_ece_meter.avg
         
         return meter_dict 

@@ -6,6 +6,9 @@ from torch.nn import functional as F
 from misc.utils import AvgMeter
 import torchmetrics
 from tqdm import tqdm
+import os 
+import pandas as pd 
+from misc.metric import ECELoss
 
 def train_epoch(args, epoch, model, train_loader, optimizer, criterion):
     
@@ -18,7 +21,7 @@ def train_epoch(args, epoch, model, train_loader, optimizer, criterion):
     end = time.time()
     model.train()
     
-    for step, (data, label) in enumerate(train_loader):
+    for step, (data, label, filename) in enumerate(train_loader):
         
         data = data.to(args.device)
         label = label.to(args.device)
@@ -57,25 +60,41 @@ def test_epoch(args, model, test_loader, criterion):
     
     test_loss_meter = AvgMeter()
     test_acc_meter = AvgMeter()
+    test_ece_meter = AvgMeter()
     meter_dict = dict()
     acc_metric = torchmetrics.Accuracy(task="multiclass", num_classes=args.num_classes).to(args.device)
+    ece_metric = ECELoss().to(args.device)
 
     model.eval()
+    # df = pd.read_csv(args.dataset_analysis_path)
     
     with torch.no_grad():
-        for step, (data, label) in enumerate(tqdm(test_loader)):
+        for step, (data, label, filename) in enumerate(tqdm(test_loader)):
             
             data = data.to(args.device)
             label = label.to(args.device)
             
             output = model(data)
             loss = criterion(output, label)
+            # confidence = torch.max(F.softmax(output, dim=1), dim=1)[0].item()
+            
+            # if args.dataset_analysis:
+            #     if args.trainer not in df.columns:
+            #         df[args.trainer] = 0.0 
+            #     filename = os.path.basename(filename[0]).replace('_aligned', '')
+            #     df.loc[df['filename'] == filename, args.trainer] = confidence
             acc = acc_metric(output.argmax(dim=-1), label).item()
+            ece = ece_metric(output, label).item()
             
             test_loss_meter.update(loss.item(), data.size(0))
             test_acc_meter.update(acc, data.size(0))
+            test_ece_meter.update(ece, data.size(0))
             
         meter_dict["test_loss"] = test_loss_meter.avg
         meter_dict["test_acc"] = test_acc_meter.avg 
+        meter_dict["test_ece"] = test_ece_meter.avg
+        
+        # print(df.tail(20))
+        # df.to_csv("/home/junehyoung/code/fer_calibration/analysis/results/ontest.csv", index=False)
         
         return meter_dict 
