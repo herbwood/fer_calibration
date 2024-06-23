@@ -44,9 +44,9 @@ class RAFDataset(Dataset):
         
         if self.args.trainer == "eac" or self.args.trainer == "lnsu":
             image1 = transforms.RandomHorizontalFlip(p=1)(image)
-            return image, label, idx, image1
+            return image, label, idx, image1, self.file_paths[idx]
         
         if self.args.trainer == "scn":
-            return image, label, idx
+            return image, label, idx, self.file_paths[idx]
             
-        return image, label
+        return image, label, self.file_paths[idx]
