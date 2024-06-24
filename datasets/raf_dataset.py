@@ -48,5 +48,5 @@ class RAFDataset(Dataset):
         
         if self.args.trainer == "scn":
             return image, label, idx, self.file_paths[idx]
-            
-        return image, label, self.file_paths[idx]
+        else:
+            return image, label, self.file_paths[idx]
