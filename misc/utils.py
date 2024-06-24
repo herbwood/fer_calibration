@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 class AvgMeter:
     def __init__(self):
@@ -31,6 +32,15 @@ def wandb_logger(dict_list, flags=['Train', 'Val']):
             wandb_dict[f"{flags[i]} {key}"] = value
             
     return wandb_dict
+
+def print_args(args):
+    print("***************")
+    print("** Arguments **")
+    print("***************")
+    optkeys = list(args.__dict__.keys())
+    optkeys.sort()
+    for key in optkeys:
+        print("{}: {}".format(key, args.__dict__[key]))
 
 ####################### EAC #######################
 def generate_flip_grid(w, h, device):
@@ -100,3 +110,24 @@ class LSR2(nn.Module):
         loss = torch.sum(- x * smoothed_target, dim=1)
         return torch.mean(loss)
 ####################### LNSU ######################
+
+def mixup_data_orig(x, y, alpha=1.0, use_cuda=True):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = x.size()[0]
+    if use_cuda:
+        index = torch.randperm(batch_size).cuda()
+    else:
+        index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+
+def mixup_criterion_orig(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
