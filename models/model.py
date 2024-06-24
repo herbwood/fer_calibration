@@ -125,5 +125,10 @@ class Model(nn.Module):
             
             return output, hm
         ####################### EAC #######################
-        
-        return 
+        else:
+            x = self.features(x) # [N, 2048, h, w]
+            feature = self.features2(x) # [N, 2048, 1, 1]
+            feature = feature.view(feature.size(0), -1) # [N, 2048]
+            output = self.fc(feature) # [N, C]
+            
+            return output
