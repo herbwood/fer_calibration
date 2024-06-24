@@ -10,7 +10,7 @@ import torch.optim as optim
 
 from datasets.dataloader import build_dataloader
 from models.model import Model
-from misc.utils import print_logger, wandb_logger
+from misc.utils import print_logger, wandb_logger, print_args
 
 def main(args):
     
@@ -46,6 +46,8 @@ def main(args):
     savepath = os.path.join(args.savepath, args.wandb_name)
     os.makedirs(savepath, exist_ok=True)
     
+    print_args(args)
+    
     for epoch in range(args.epochs):
         train_metric_dict = trainer.train_epoch(args, epoch, model, train_loader, optimizer, criterion)
         test_metric_dict  = trainer.test_epoch(args, model, test_loader, criterion)
@@ -75,8 +77,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='training argparsers')
     parser.add_argument('--wandb_project', default='fer_cal', type=str, help='wandb project name')
-    parser.add_argument('--wandb_name', default='eac', type=str, help='wandb name')
-    parser.add_argument('--trainer', default='lnsu', type=str, help='trainers',choices=['baseline', 'scn', 'rul', 'eac', 'lnsu', 'ours'])
+    parser.add_argument('--wandb_name', default='mixup', type=str, help='wandb name')
+    parser.add_argument('--trainer', default='mixup', type=str, help='trainers',choices=['baseline', 'scn', 'rul', 'eac', 'lnsu', 'ours', 'mixup', 'cutmix'])
     parser.add_argument('--dataset', default='raf', type=str, help='dataset',choices=['raf', 'affectnet', 'ferplus'])
     parser.add_argument('--num_classes', type=int, default=7, help='raf : 7, affectnet : 8, ferplus : 8')
     parser.add_argument('--basepath', type=str, default='/nas_homes/jihyun/RAF_DB/',  
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument('--savepath', default='/nas_homes/junehyoung/fer_calibration', type=str, help='path to save weights')
     parser.add_argument('--device', default='cuda', type=str, help='devices to use')
     parser.add_argument('--epochs', default=60, type=int, metavar='N', help='number of total epochs to run')
-    parser.add_argument('--batch_size', default=32, type=int, metavar='N', help='train batchsize')
+    parser.add_argument('--batch_size', default=64, type=int, metavar='N', help='train batchsize')
     parser.add_argument('--lr', default=0.0002, type=float, metavar='LR', help='initial learning rate')
     parser.add_argument('--workers', type=int, default=8, help='num of workers to use')
     parser.add_argument('--load_path', type=str, default="/home/jihyun/code/eccv/src/2_0.1_0.3.pth")
@@ -96,6 +98,11 @@ if __name__ == "__main__":
     parser.add_argument('--resnet50_path', type=str, default='/nas_homes/junehyoung/fer_calibration/resnet50_ft_weight.pkl',  help='pretrained_backbone_path')
     parser.add_argument('--log_freq', type=int, default=50,  help='log print frequency')
     parser.add_argument('--label_path', type=str, default='list_patition_label.txt', help='label_path')
+    
+    
+    parser.add_argument('--alpha', default=0.2, type=float, help='alpha')
+    parser.add_argument('--cutmix_ver', type=str, default='vertical', help='cutmix version to implement')
+    
     args = parser.parse_args()
     
     main(args)
