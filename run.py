@@ -34,7 +34,7 @@ def main(args):
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
     criterion = nn.CrossEntropyLoss(reduction='mean')
     
-    best_metric = 0.0 
+    best_metric = 1e+10
     best_epoch= 0
     
     if args.wandb_name:
@@ -56,7 +56,8 @@ def main(args):
         print_logger(args, epoch, train_metric_dict, phase="Train")
         print_logger(args, epoch, test_metric_dict, phase="Test")
         
-        if test_metric_dict[args.metric_key] > best_metric:
+        # if test_metric_dict[args.metric_key] > best_metric:
+        if test_metric_dict[args.metric_key] < best_metric:
             best_metric = test_metric_dict[args.metric_key]
             best_epoch = epoch
             torch.save({
@@ -69,7 +70,7 @@ def main(args):
             print(f"\nSaved Best Model at Epoch: {epoch+1} with {args.metric_key} {best_metric:.4f}\n")
             
         else:
-            print(f"\nStill Best Model with {args.metric_key} {best_metric:.4f} at epoch {best_epoch}\n")
+            print(f"\nStill Best Model with {args.metric_key} {best_metric:.4f} at epoch {best_epoch+1}\n")
         
         if args.wandb_name:
             wandb.log(wandb_logger([train_metric_dict, test_metric_dict], flags=['Train', 'Val']))
@@ -77,8 +78,9 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='training argparsers')
     parser.add_argument('--wandb_project', default='fer_cal', type=str, help='wandb project name')
-    parser.add_argument('--wandb_name', default='mixup', type=str, help='wandb name')
-    parser.add_argument('--trainer', default='mixup', type=str, help='trainers',choices=['baseline', 'scn', 'rul', 'eac', 'lnsu', 'ours', 'mixup', 'cutmix'])
+    parser.add_argument('--wandb_name', default='rankcutmix', type=str, help='wandb name')
+    parser.add_argument('--trainer', default='rankcutmix', type=str, help='trainers',
+                        choices=['baseline', 'scn', 'rul', 'eac', 'lnsu', 'ours', 'mixup', 'cutmix', 'rankcutmix', 'rankcutmix_ver3'])
     parser.add_argument('--dataset', default='raf', type=str, help='dataset',choices=['raf', 'affectnet', 'ferplus'])
     parser.add_argument('--num_classes', type=int, default=7, help='raf : 7, affectnet : 8, ferplus : 8')
     parser.add_argument('--basepath', type=str, default='/nas_homes/jihyun/RAF_DB/',  
@@ -86,12 +88,13 @@ if __name__ == "__main__":
                               affectnet: /nas_homes/jihyun/datasets/AffectNet, \
                               ferplus: /nas_homes/jihyun/FERPlus'
                             )
+    parser.add_argument('--batch_size', default=64, type=int, metavar='N', help='train batchsize')
+    parser.add_argument('--lr', default=0.0002, type=float, metavar='LR', help='initial learning rate')
     parser.add_argument('--metric_key', default='test_acc', type=str, help='metric to save')
+    
     parser.add_argument('--savepath', default='/nas_homes/junehyoung/fer_calibration', type=str, help='path to save weights')
     parser.add_argument('--device', default='cuda', type=str, help='devices to use')
     parser.add_argument('--epochs', default=60, type=int, metavar='N', help='number of total epochs to run')
-    parser.add_argument('--batch_size', default=64, type=int, metavar='N', help='train batchsize')
-    parser.add_argument('--lr', default=0.0002, type=float, metavar='LR', help='initial learning rate')
     parser.add_argument('--workers', type=int, default=8, help='num of workers to use')
     parser.add_argument('--load_path', type=str, default="/home/jihyun/code/eccv/src/2_0.1_0.3.pth")
     parser.add_argument('--mode', type=str, default='train', help='Mode to run.')
@@ -99,9 +102,10 @@ if __name__ == "__main__":
     parser.add_argument('--log_freq', type=int, default=50,  help='log print frequency')
     parser.add_argument('--label_path', type=str, default='list_patition_label.txt', help='label_path')
     
-    
-    parser.add_argument('--alpha', default=0.2, type=float, help='alpha')
+    parser.add_argument('--alpha', default=0.2, type=float, help='sampling degree for beta distribution (for mixup)')
     parser.add_argument('--cutmix_ver', type=str, default='vertical', help='cutmix version to implement')
+    parser.add_argument('--margin', default=0.2, type=float, help='margin hyperparameter (for rankcutmix)')
+    parser.add_argument('--lambd', default=0.2, type=float, help='hyperparameter for balancing ce loss and rank loss (for rankcutmix)')
     
     args = parser.parse_args()
     
